@@ -38,10 +38,6 @@ Although everything is optional, it's recommended to at least provide the image 
  * **MaxZoomScrollCount**: Maximum number of scroll zoom-in steps; might need adjustements depending on your
                            image dimensions & _Magnify_ value (default: 30).
 
-*Pan configuration:*
- * **ImgWidth**: Original image pixel width. A value of 0 disables the functionality that prevents the user
-                 from dragging and zooming outside of the image (default: 0).
- * **ImgHeight**: Original image pixel height (default: 0).
 
 *Mouse options and callbacks:*
  * **PanMouseButton**: Mouse button used for panning: 1: left, 2: right, 3: middle.
@@ -85,16 +81,11 @@ using configuration options). A simple use case of loading and showing an image 
 
 ```matlab
 Img = imread('myimage.jpg');
-imshow(Img);
-[h, w, ~] = size(Img);
-imgzoompan(gca, 'ImgWidth', w, 'ImgHeight', h);
+imshow(Img)
+imgzoompan
 ```
-The following code examples are included:
 
-* **example1.m**  Shows the most basic use case: load and display an image.
-* **example2.m**: Adds custom mouse button callbacks to the root Figure (all clicks captured).
-* **example3.m**: Adds a custom mouse button callback to the image object shown in the Axes (only captures clicks in
-                  visible parts of the image).
+Various examples are included in the `examples` directory. 
 
 ## Acknowledgements:
 

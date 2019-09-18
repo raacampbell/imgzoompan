@@ -17,5 +17,4 @@ subplot(1,2,2)
 P = peaks(256);
 imagesc(P)
 
-[h, w, ~] = size(P);
-imgzoompan('ImgWidth', w, 'ImgHeight', h);
+imgzoompan

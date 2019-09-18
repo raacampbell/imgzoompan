@@ -24,11 +24,6 @@ function imgzoompan(varargin)
 % * 'MaxZoomScrollCount' Maximum number of scroll zoom-in steps; might need adjustements depending 
 %                        on your image dimensions & Magnify value (default: 30).
 %
-% The following relate to pan configuration:
-% 'ImgWidth' Original image pixel width. A value of 0 disables the functionality that prevents the 
-%            user from dragging and zooming outside of the image (default: 0).
-% 'ImgHeight' Original image pixel height (default: 0).
-%
 %
 %% Outputs
 %  none
@@ -78,10 +73,6 @@ p.addParamValue('ChangeMagnify', 1.1, @isnumeric);
 p.addParamValue('IncreaseChange', 1.1, @isnumeric);
 p.addParamValue('MinValue', 1.1, @isnumeric);
 p.addParamValue('MaxZoomScrollCount', 30, @isnumeric);
-
-% Pan configuration options
-p.addParamValue('ImgWidth', 0, @isnumeric);
-p.addParamValue('ImgHeight', 0, @isnumeric);
 
 % Mouse options and callbacks
 p.addParamValue('PanMouseButton', 2, @isnumeric);
@@ -137,13 +128,19 @@ function zoom_fcn(src, evt)
     scrollChange = evt.VerticalScrollCount; % -1: zoomIn, 1: zoomOut
     zpSet = src.UserData.zoompan;
 
+
     if ((zpSet.zoomScrollCount - scrollChange) <= zpSet.MaxZoomScrollCount)
         axish = gca;
 
-        if (isempty(zpSet.origH) || axish ~= zpSet.origH)
-            zpSet.origH = axish;
-            zpSet.origXLim = axish.XLim;
-            zpSet.origYLim = axish.YLim;
+        %Get the width and height of the image
+        %[ImgHeight,ImgWidth]=getWidthHeight(axish)
+        ImgHeight =   480;
+        ImgWidth =   640;
+
+        if isempty(src.UserData.zoompan.origH) || axish ~= src.UserData.zoompan.origH
+            src.UserData.zoompan.origH = axish;
+            src.UserData.zoompan.origXLim = axish.XLim;
+            src.UserData.zoompan.origYLim = axish.YLim;
         end
 
         % calculate the new XLim and YLim
@@ -153,25 +150,26 @@ function zoom_fcn(src, evt)
 
         newXLim = floor(newXLim);
         newYLim = floor(newYLim);
-        % only check for image border location if user provided ImgWidth
-        if (zpSet.ImgWidth > 0)
-            if (newXLim(1) >= 0 && newXLim(2) <= zpSet.ImgWidth && newYLim(1) >= 0 && newYLim(2) <= zpSet.ImgHeight)
-                axish.XLim = newXLim;
-                axish.YLim = newYLim;
-                zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
-            else
-                axish.XLim = zpSet.origXLim;
-                axish.YLim = zpSet.origYLim;
-                zpSet.zoomScrollCount = 0;
-            end
-        else
+        if diff(newYLim)==0 || diff(newXLim)==0
+            return
+        end
+
+        if (newXLim(1) >= 0 && newXLim(2) <= ImgWidth && newYLim(1) >= 0 && newYLim(2) <= ImgHeight)
             axish.XLim = newXLim;
             axish.YLim = newYLim;
             zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
+        else
+            axish.XLim = zpSet.origXLim;
+            axish.YLim = zpSet.origYLim;
+            zpSet.zoomScrollCount = 0;
         end
-        %fprintf('XLim: [%.3f, %.3f], YLim: [%.3f, %.3f]\n', axish.XLim(1), axish.XLim(2), axish.YLim(1), axish.YLim(2));
+
+    else
+        axish.XLim = newXLim;
+        axish.YLim = newYLim;
+        zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
     end
-    hFig.UserData.zoompan = zpSet;
+    %fprintf('XLim: [%.3f, %.3f], YLim: [%.3f, %.3f]\n', axish.XLim(1), axish.XLim(2), axish.YLim(1), axish.YLim(2));
 
 
 function down_fcn(src, evt)
@@ -258,6 +256,7 @@ function panningFcn(src,~,hAx,seedPt)
     zpSet = src.UserData.zoompan;
     % Get current mouse position
     currPt = get(hAx,'CurrentPoint');
+    [ImgHeight,ImgWidth]=getWidthHeight(hAx);
 
     % Current Limits [absolute vals]
     XLim = hAx.XLim;
@@ -286,10 +285,19 @@ function panningFcn(src,~,hAx,seedPt)
     newYLims = round(newYLims);
 
     % Update Axes limits
-    if (newXLims(1) > 0.0 && newXLims(2) < zpSet.ImgWidth)
+    if (newXLims(1) > 0.0 && newXLims(2) < ImgWidth)
         set(hAx,'Xlim',newXLims);
     end
-    if (newYLims(1) > 0.0 && newYLims(2) < zpSet.ImgHeight)
+    if (newYLims(1) > 0.0 && newYLims(2) < ImgHeight)
         set(hAx,'Ylim',newYLims);
     end
 
+function [ImgHeight,ImgWidth]=getWidthHeight(axish)
+    % Find the width and height of the first child image in the axes
+    C=axish.Children;
+    for ii=1:length(C)
+        if isa(C(ii),'matlab.graphics.primitive.Image')
+            [ImgHeight, ImgWidth,~] = size(C(ii).CData);
+            break
+        end
+    end

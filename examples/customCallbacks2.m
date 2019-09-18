@@ -11,8 +11,7 @@ addpath('../')
 
 Img = imread('myimage.jpg');
 hImage = imshow(Img); % we need this handle to the image
-[h, w, ~] = size(Img);
-imgzoompan('ImgWidth', w, 'ImgHeight', h);
+imgzoompan
 
 % imshow resets the axes' callbacks, so we need to set this callback manually
 hImage.ButtonDownFcn = @myFuncDown;

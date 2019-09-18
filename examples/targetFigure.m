@@ -20,6 +20,4 @@ p=peaks(256);
 imagesc(p)
 
 
-
-[h, w, ~] = size(Img);
-imgzoompan('hFig',fig1, 'ImgWidth', w, 'ImgHeight', h);
+imgzoompan('hFig',fig1);
