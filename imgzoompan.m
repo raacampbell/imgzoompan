@@ -148,14 +148,16 @@ function zoom_fcn(src, evt)
 
         newXLim = floor(newXLim);
         newYLim = floor(newYLim);
+
         if diff(newYLim)==0 || diff(newXLim)==0
+            % Avoid zooming in to a single point
             return
         end
 
         if (newXLim(1) >= 0 && newXLim(2) <= ImgWidth && newYLim(1) >= 0 && newYLim(2) <= ImgHeight)
             axish.XLim = newXLim;
             axish.YLim = newYLim;
-            zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
+            src.UserData.zoompan.zoomScrollCount = src.UserData.zoompan.zoomScrollCount - scrollChange;
         else
             if ~isempty(zpSet.origXLim)
                 axish.XLim = zpSet.origXLim;
@@ -163,14 +165,15 @@ function zoom_fcn(src, evt)
             if ~isempty(zpSet.origYLim)
                 axish.YLim = zpSet.origYLim;
             end
-            zpSet.zoomScrollCount = 0;
+            src.UserData.zoompan.zoomScrollCount = 0;
         end
 
     else
-        disp('no')
-        axish.XLim = newXLim;
-        axish.YLim = newYLim;
-        zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
+        % TODO: can't ever have run since newXLim would never be defined. Comment out for now. 
+        % For some reason the new updates (ROB) cause the odd entry into here. 
+        %axish.XLim = newXLim;
+        %axish.YLim = newYLim;
+        %src.UserData.zoompan.zoomScrollCount = src.UserData.zoompan.zoomScrollCount - scrollChange;
     end
     %fprintf('XLim: [%.3f, %.3f], YLim: [%.3f, %.3f]\n', axish.XLim(1), axish.XLim(2), axish.YLim(1), axish.YLim(2));
 
