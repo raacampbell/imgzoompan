@@ -1,5 +1,5 @@
-function example1
-% imgzoompan example1
+function minimalExample
+% imgzoompan minimalExample
 %
 % Simple use case: Load an image (provided) and show it,
 % then add zoompan functionality.
@@ -12,4 +12,4 @@ addpath('../');
 Img = imread('myimage.jpg');
 imshow(Img);
 [h, w, ~] = size(Img);
-imgzoompan(gcf, 'ImgWidth', w, 'ImgHeight', h);
+imgzoompan('ImgWidth', w, 'ImgHeight', h);

@@ -1,15 +1,18 @@
-function imgzoompan(hfig, varargin)
+function imgzoompan(varargin)
 % imgzoompan provides instant mouse zoom and pan
 %
-% function imgzoompan(hfig, varargin)
+% function imgzoompan(varargin)
 %
 %% Purpose
 % This function provides instant mouse zoom (mouse wheel) and pan (mouse drag) capabilities 
 % to figures, designed for displaying 2D images that require lots of drag & zoom. For more
-% details see README file.
+% details see README file. NOTE: this function works only on the current axes of the figure
+% window to which it is targetted. By default this is the last plotted axis. 
 %
 % 
 %% Inputs (optional param/value pairs)
+% 'hFig' Handle to a figure window to which we will target imgzoompan
+%
 % The following relate to zoom config
 % * 'Magnify' General magnitication factor. 1.0 or greater (default: 1.1). A value of 2.0 
 %             solves the zoom & pan deformations caused by MATLAB's embedded image resize method.
@@ -20,6 +23,7 @@ function imgzoompan(hfig, varargin)
 % * 'MinValue' Sets the minimum value for Magnify, ChangeMagnify and IncreaseChange (default: 1.1).
 % * 'MaxZoomScrollCount' Maximum number of scroll zoom-in steps; might need adjustements depending 
 %                        on your image dimensions & Magnify value (default: 30).
+%
 % The following relate to pan configuration:
 % 'ImgWidth' Original image pixel width. A value of 0 disables the functionality that prevents the 
 %            user from dragging and zooming outside of the image (default: 0).
@@ -45,36 +49,45 @@ function imgzoompan(hfig, varargin)
 % published under BSD license (http://www.opensource.org/licenses/bsd-license.php).
 
 
-%  Run in current figure unless otherwise requested
+% Do not start if there are no open figure windows
 if isempty(findobj('type','figure'))
     fprintf('%s -- finds no open figure windows. Quitting.\n', mfilename)
     return
 end
 
-if nargin==0 || isempty(hfig) || ~isa(hfig,'matlab.ui.Figure')
-    hfig = gcf;
+
+% Legacy call structure saw the first input argument being a handle to a figure. 
+% Catch this and convert to new call structure where the figure is always an optional argument
+if length(varargin)>0 && isa(varargin{1},'matlab.ui.Figure')
+    fprintf('CONVERTING CALL\n')
+    varargin = ['hFig',varargin];
 end
 
 % Parse configuration options
 p = inputParser;
+p.CaseSensitive = false;
+
+% For targetting to a particular figure window
+p.addParamValue('hFig', [], @(x) isa(x,'matlab.ui.Figure'));
+
 % Zoom configuration options
-p.addOptional('Magnify', 1.1, @isnumeric);
-p.addOptional('XMagnify', 1.0, @isnumeric);
-p.addOptional('YMagnify', 1.0, @isnumeric);
-p.addOptional('ChangeMagnify', 1.1, @isnumeric);
-p.addOptional('IncreaseChange', 1.1, @isnumeric);
-p.addOptional('MinValue', 1.1, @isnumeric);
-p.addOptional('MaxZoomScrollCount', 30, @isnumeric);
+p.addParamValue('Magnify', 1.1, @isnumeric);
+p.addParamValue('XMagnify', 1.0, @isnumeric);
+p.addParamValue('YMagnify', 1.0, @isnumeric);
+p.addParamValue('ChangeMagnify', 1.1, @isnumeric);
+p.addParamValue('IncreaseChange', 1.1, @isnumeric);
+p.addParamValue('MinValue', 1.1, @isnumeric);
+p.addParamValue('MaxZoomScrollCount', 30, @isnumeric);
 
 % Pan configuration options
-p.addOptional('ImgWidth', 0, @isnumeric);
-p.addOptional('ImgHeight', 0, @isnumeric);
+p.addParamValue('ImgWidth', 0, @isnumeric);
+p.addParamValue('ImgHeight', 0, @isnumeric);
 
 % Mouse options and callbacks
-p.addOptional('PanMouseButton', 2, @isnumeric);
-p.addOptional('ResetMouseButton', 3, @isnumeric);
-p.addOptional('ButtonDownFcn',  @(~,~) 0);
-p.addOptional('ButtonUpFcn', @(~,~) 0) ;
+p.addParamValue('PanMouseButton', 2, @isnumeric);
+p.addParamValue('ResetMouseButton', 3, @isnumeric);
+p.addParamValue('ButtonDownFcn',  @(~,~) 0);
+p.addParamValue('ButtonUpFcn', @(~,~) 0) ;
 
 % Parse & Sanitize options
 parse(p, varargin{:});
@@ -90,18 +103,24 @@ if opt.IncreaseChange<opt.MinValue
     opt.IncreaseChange=opt.MinValue;
 end
 
+hFig = opt.hFig;
+if isempty(hFig)
+    hFig=gcf;
+end
+opt = rmfield(opt,'hFig'); %Won't need this again
+
 
 % Place the settings and temporary variable into the figure's UserData property
-hfig.UserData.zoompan = opt;
-hfig.UserData.zoompan.zoomScrollCount = 0;
-hfig.UserData.zoompan.origH=[];
-hfig.UserData.zoompan.origXLim=[];
-hfig.UserData.zoompan.origYLim=[];
+hFig.UserData.zoompan = opt;
+hFig.UserData.zoompan.zoomScrollCount = 0;
+hFig.UserData.zoompan.origH=[];
+hFig.UserData.zoompan.origXLim=[];
+hFig.UserData.zoompan.origYLim=[];
 
 % Set up callback functions
-set(hfig, 'WindowScrollWheelFcn', @zoom_fcn);
-set(hfig, 'WindowButtonDownFcn', @down_fcn);
-set(hfig, 'WindowButtonUpFcn', @up_fcn);
+set(hFig, 'WindowScrollWheelFcn', @zoom_fcn);
+set(hFig, 'WindowButtonDownFcn', @down_fcn);
+set(hFig, 'WindowButtonUpFcn', @up_fcn);
 
 
 
@@ -148,11 +167,11 @@ function zoom_fcn(src, evt)
         else
             axish.XLim = newXLim;
             axish.YLim = newYLim;
-            zpSet.zpSet.zoomScrollCount = zpSet.zpSet.zoomScrollCount - scrollChange;
+            zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
         end
         %fprintf('XLim: [%.3f, %.3f], YLim: [%.3f, %.3f]\n', axish.XLim(1), axish.XLim(2), axish.YLim(1), axish.YLim(2));
     end
-    hfig.UserData.zoompan = zpSet;
+    hFig.UserData.zoompan = zpSet;
 
 
 function down_fcn(src, evt)
