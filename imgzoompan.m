@@ -133,9 +133,7 @@ function zoom_fcn(src, evt)
         axish = gca;
 
         %Get the width and height of the image
-        %[ImgHeight,ImgWidth]=getWidthHeight(axish)
-        ImgHeight =   480;
-        ImgWidth =   640;
+        [ImgHeight,ImgWidth]=getWidthHeight(axish);
 
         if isempty(src.UserData.zoompan.origH) || axish ~= src.UserData.zoompan.origH
             src.UserData.zoompan.origH = axish;
@@ -159,12 +157,17 @@ function zoom_fcn(src, evt)
             axish.YLim = newYLim;
             zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
         else
-            axish.XLim = zpSet.origXLim;
-            axish.YLim = zpSet.origYLim;
+            if ~isempty(zpSet.origXLim)
+                axish.XLim = zpSet.origXLim;
+            end
+            if ~isempty(zpSet.origYLim)
+                axish.YLim = zpSet.origYLim;
+            end
             zpSet.zoomScrollCount = 0;
         end
 
     else
+        disp('no')
         axish.XLim = newXLim;
         axish.YLim = newYLim;
         zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
