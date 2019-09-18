@@ -110,8 +110,11 @@ set(hfig, 'WindowButtonUpFcn', @up_fcn);
 % -------------------------------
 % Start of callback functions 
 
-% Applies zoom
+
 function zoom_fcn(src, evt)
+    % This callback function is called when the mouse scroll wheel event fires. 
+    % The callback is used to manage figure zooming
+
     scrollChange = evt.VerticalScrollCount; % -1: zoomIn, 1: zoomOut
     zpSet = src.UserData.zoompan;
 
@@ -152,8 +155,10 @@ function zoom_fcn(src, evt)
     hfig.UserData.zoompan = zpSet;
 
 
-%% Mouse Button Callbacks
 function down_fcn(src, evt)
+    % This callback function is called when the mouse button goes down. 
+    % The callback is used to manage figure panning.
+
     zpSet = src.UserData.zoompan;
     zpSet.ButtonDownFcn(src, evt); % First, run callback from options
 
@@ -180,8 +185,10 @@ function down_fcn(src, evt)
     end
 
 
-% Main mouseButtonUp callback
 function up_fcn(src, evt)
+    % This callback function is called when the mouse button goes up. 
+    % The callback is used to manage figure panning.
+
     zpSet = src.UserData.zoompan;
     zpSet.ButtonUpFcn(src, evt); % First, run callback from options
 
@@ -200,21 +207,19 @@ function up_fcn(src, evt)
         end
     end
 
-    stopPan
+    set(gcbf,'WindowButtonMotionFcn',[]);
+    setptr(gcbf,'arrow');
 
 
 
 
 % -------------------------------
-% Start of helpwer functions 
+% Start of helper functions for axis panning
 
-
-%% AXIS PANNING FUNCTIONS
-
-% Call this Fcn in your 'WindowButtonDownFcn'
-% Take in desired Axis to pan
-% Get seed points & assign the Panning Fcn to top level Fig
 function startPan(hAx)
+    % Call this Fcn in your 'WindowButtonDownFcn'
+    % Take in desired Axis to pan
+    % Get seed points & assign the Panning Fcn to top level Fig
     hFig = ancestor(hAx, 'Figure', 'toplevel');   % Parent Fig
 
     seedPt = get(hAx, 'CurrentPoint'); % Get init mouse position
@@ -229,15 +234,8 @@ function startPan(hAx)
 
 
 
-% Call this Fcn in your 'WindowButtonUpFcn'
-function stopPan
-    set(gcbf,'WindowButtonMotionFcn',[]);
-    setptr(gcbf,'arrow');
-
-
-
-% Controls the real-time panning on the desired axis
 function panningFcn(src,~,hAx,seedPt)
+    % Controls the real-time panning on the desired axis
     zpSet = src.UserData.zoompan;
     % Get current mouse position
     currPt = get(hAx,'CurrentPoint');
