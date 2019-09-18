@@ -18,3 +18,5 @@ P = peaks(256);
 imagesc(P)
 
 imgzoompan
+
+

@@ -49,8 +49,8 @@ Although everything is optional, it's recommended to at least provide the image 
                       (hObject, event) and will work as described in [Matlab's documentation for
                       'WindowButtonDownFcn'](https://www.mathworks.com/help/matlab/ref/matlab.ui.figure-properties.html#buiwuyk-1-WindowButtonDownFcn).
                       (See _examples/example2.m_). Notice that this and the _ButtonUpFcn_
-					  callback are triggered from the **Figure**, so if you display the image in an Axis or
-					  some other element, you can use their callbacks instead (See _examples/example3.m_).
+            callback are triggered from the **Figure**, so if you display the image in an Axis or
+            some other element, you can use their callbacks instead (See _examples/example3.m_).
  * **ButtonUpFcn**: Mouse button up function callback. Works the same way as the 'ButtonDownFcn' option.
 
 ## Zoom & Pan behaviour:

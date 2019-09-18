@@ -11,5 +11,4 @@ addpath('../');
 
 Img = imread('myimage.jpg');
 imshow(Img);
-[h, w, ~] = size(Img);
 imgzoompan
