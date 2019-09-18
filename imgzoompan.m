@@ -45,223 +45,234 @@ function imgzoompan(hfig, varargin)
 % published under BSD license (http://www.opensource.org/licenses/bsd-license.php).
 
 
-    %  Run in current figure unless otherwise requested
-    if isempty(findobj('type','figure'))
-        fprintf('%s -- finds no open figure windows. Quitting.\n', mfilename)
-        return
-    end
+%  Run in current figure unless otherwise requested
+if isempty(findobj('type','figure'))
+    fprintf('%s -- finds no open figure windows. Quitting.\n', mfilename)
+    return
+end
 
-    if nargin==0 || isempty(hfig) || ~isa(hfig,'matlab.ui.Figure')
-        hfig = gcf;
-    end
+if nargin==0 || isempty(hfig) || ~isa(hfig,'matlab.ui.Figure')
+    hfig = gcf;
+end
 
-    % Parse configuration options
-    p = inputParser;
-    % Zoom configuration options
-    p.addOptional('Magnify', 1.1, @isnumeric);
-    p.addOptional('XMagnify', 1.0, @isnumeric);
-    p.addOptional('YMagnify', 1.0, @isnumeric);
-    p.addOptional('ChangeMagnify', 1.1, @isnumeric);
-    p.addOptional('IncreaseChange', 1.1, @isnumeric);
-    p.addOptional('MinValue', 1.1, @isnumeric);
-    p.addOptional('MaxZoomScrollCount', 30, @isnumeric);
+% Parse configuration options
+p = inputParser;
+% Zoom configuration options
+p.addOptional('Magnify', 1.1, @isnumeric);
+p.addOptional('XMagnify', 1.0, @isnumeric);
+p.addOptional('YMagnify', 1.0, @isnumeric);
+p.addOptional('ChangeMagnify', 1.1, @isnumeric);
+p.addOptional('IncreaseChange', 1.1, @isnumeric);
+p.addOptional('MinValue', 1.1, @isnumeric);
+p.addOptional('MaxZoomScrollCount', 30, @isnumeric);
 
-    % Pan configuration options
-    p.addOptional('ImgWidth', 0, @isnumeric);
-    p.addOptional('ImgHeight', 0, @isnumeric);
+% Pan configuration options
+p.addOptional('ImgWidth', 0, @isnumeric);
+p.addOptional('ImgHeight', 0, @isnumeric);
 
-    % Mouse options and callbacks
-    p.addOptional('PanMouseButton', 2, @isnumeric);
-    p.addOptional('ResetMouseButton', 3, @isnumeric);
-    p.addOptional('ButtonDownFcn',  @(~,~) 0);
-    p.addOptional('ButtonUpFcn', @(~,~) 0) ;
+% Mouse options and callbacks
+p.addOptional('PanMouseButton', 2, @isnumeric);
+p.addOptional('ResetMouseButton', 3, @isnumeric);
+p.addOptional('ButtonDownFcn',  @(~,~) 0);
+p.addOptional('ButtonUpFcn', @(~,~) 0) ;
 
-    % Parse & Sanitize options
-    parse(p, varargin{:});
-    opt = p.Results;
+% Parse & Sanitize options
+parse(p, varargin{:});
+opt = p.Results;
 
-    if opt.Magnify<opt.MinValue
-        opt.Magnify=opt.MinValue;
-    end
-    if opt.ChangeMagnify<opt.MinValue
-        opt.ChangeMagnify=opt.MinValue;
-    end
-    if opt.IncreaseChange<opt.MinValue
-        opt.IncreaseChange=opt.MinValue;
-    end
-
-
-
-    % Set up callback functions
-    set(hfig, 'WindowScrollWheelFcn', @zoom_fcn);
-    set(hfig, 'WindowButtonDownFcn', @down_fcn);
-    set(hfig, 'WindowButtonUpFcn', @up_fcn);
-
-    zoomScrollCount = 0;
-    orig.h=[];
-    orig.XLim=[];
-    orig.YLim=[];
+if opt.Magnify<opt.MinValue
+    opt.Magnify=opt.MinValue;
+end
+if opt.ChangeMagnify<opt.MinValue
+    opt.ChangeMagnify=opt.MinValue;
+end
+if opt.IncreaseChange<opt.MinValue
+    opt.IncreaseChange=opt.MinValue;
+end
 
 
+% Place the settings and temporary variable into the figure's UserData property
+hfig.UserData.zoompan = opt;
+hfig.UserData.zoompan.zoomScrollCount = 0;
+hfig.UserData.zoompan.origH=[];
+hfig.UserData.zoompan.origXLim=[];
+hfig.UserData.zoompan.origYLim=[];
 
-    % -------------------------------
-    % Nested callback functions, etc, follow
+% Set up callback functions
+set(hfig, 'WindowScrollWheelFcn', @zoom_fcn);
+set(hfig, 'WindowButtonDownFcn', @down_fcn);
+set(hfig, 'WindowButtonUpFcn', @up_fcn);
 
 
-    % Applies zoom
-    function zoom_fcn(src, cbdata)
-        scrollChange = cbdata.VerticalScrollCount; % -1: zoomIn, 1: zoomOut
 
-        if ((zoomScrollCount - scrollChange) <= opt.MaxZoomScrollCount)
-            axish = gca;
 
-            if (isempty(orig.h) || axish ~= orig.h)
-                orig.h = axish;
-                orig.XLim = axish.XLim;
-                orig.YLim = axish.YLim;
-            end
 
-            % calculate the new XLim and YLim
-            cpaxes = mean(axish.CurrentPoint);
-            newXLim = (axish.XLim - cpaxes(1)) * (opt.Magnify * opt.XMagnify)^scrollChange + cpaxes(1);
-            newYLim = (axish.YLim - cpaxes(2)) * (opt.Magnify * opt.YMagnify)^scrollChange + cpaxes(2);
+% -------------------------------
+% Start of callback functions 
 
-            newXLim = floor(newXLim);
-            newYLim = floor(newYLim);
-            % only check for image border location if user provided ImgWidth
-            if (opt.ImgWidth > 0)
-                if (newXLim(1) >= 0 && newXLim(2) <= opt.ImgWidth && newYLim(1) >= 0 && newYLim(2) <= opt.ImgHeight)
-                    axish.XLim = newXLim;
-                    axish.YLim = newYLim;
-                    zoomScrollCount = zoomScrollCount - scrollChange;
-                else
-                    axish.XLim = orig.XLim;
-                    axish.YLim = orig.YLim;
-                    zoomScrollCount = 0;
-                end
-            else
+% Applies zoom
+function zoom_fcn(src, evt)
+    scrollChange = evt.VerticalScrollCount; % -1: zoomIn, 1: zoomOut
+    zpSet = src.UserData.zoompan;
+
+    if ((zpSet.zoomScrollCount - scrollChange) <= zpSet.MaxZoomScrollCount)
+        axish = gca;
+
+        if (isempty(zpSet.origH) || axish ~= zpSet.origH)
+            zpSet.origH = axish;
+            zpSet.origXLim = axish.XLim;
+            zpSet.origYLim = axish.YLim;
+        end
+
+        % calculate the new XLim and YLim
+        cpaxes = mean(axish.CurrentPoint);
+        newXLim = (axish.XLim - cpaxes(1)) * (zpSet.Magnify * zpSet.XMagnify)^scrollChange + cpaxes(1);
+        newYLim = (axish.YLim - cpaxes(2)) * (zpSet.Magnify * zpSet.YMagnify)^scrollChange + cpaxes(2);
+
+        newXLim = floor(newXLim);
+        newYLim = floor(newYLim);
+        % only check for image border location if user provided ImgWidth
+        if (zpSet.ImgWidth > 0)
+            if (newXLim(1) >= 0 && newXLim(2) <= zpSet.ImgWidth && newYLim(1) >= 0 && newYLim(2) <= zpSet.ImgHeight)
                 axish.XLim = newXLim;
                 axish.YLim = newYLim;
-                zoomScrollCount = zoomScrollCount - scrollChange;
+                zpSet.zoomScrollCount = zpSet.zoomScrollCount - scrollChange;
+            else
+                axish.XLim = zpSet.origXLim;
+                axish.YLim = zpSet.origYLim;
+                zpSet.zoomScrollCount = 0;
             end
-            %fprintf('XLim: [%.3f, %.3f], YLim: [%.3f, %.3f]\n', axish.XLim(1), axish.XLim(2), axish.YLim(1), axish.YLim(2));
+        else
+            axish.XLim = newXLim;
+            axish.YLim = newYLim;
+            zpSet.zpSet.zoomScrollCount = zpSet.zpSet.zoomScrollCount - scrollChange;
         end
-    end %zoom_fcn
+        %fprintf('XLim: [%.3f, %.3f], YLim: [%.3f, %.3f]\n', axish.XLim(1), axish.XLim(2), axish.YLim(1), axish.YLim(2));
+    end
+    hfig.UserData.zoompan = zpSet;
 
-    %% Mouse Button Callbacks
-    function down_fcn(hObj, evt)
-        opt.ButtonDownFcn(hObj, evt); % First, run callback from options
 
-        clickType = evt.Source.SelectionType;
+%% Mouse Button Callbacks
+function down_fcn(src, evt)
+    zpSet = src.UserData.zoompan;
+    zpSet.ButtonDownFcn(src, evt); % First, run callback from options
 
-        % Panning action
-        panBt = opt.PanMouseButton;
-        if (panBt > 0)
-            if (panBt == 1 && strcmp(clickType, 'normal')) || ...
-                (panBt == 2 && strcmp(clickType, 'alt')) || ...
-                (panBt == 3 && strcmp(clickType, 'extend'))
 
-                guiArea = hittest(hObj);
-                parentAxes = ancestor(guiArea,'axes');
+    clickType = evt.Source.SelectionType;
 
-                % if the mouse is over the desired axis, trigger the pan fcn
-                if ~isempty(parentAxes)
-                    startPan(parentAxes)
-                else
-                    setptr(evt.Source,'forbidden')
-                end
-            end
-        end
-    end %down_fcn
+    % Panning action
+    panBt = zpSet.PanMouseButton;
+    if (panBt > 0)
+        if (panBt == 1 && strcmp(clickType, 'normal')) || ...
+            (panBt == 2 && strcmp(clickType, 'alt')) || ...
+            (panBt == 3 && strcmp(clickType, 'extend'))
 
-    % Main mouseButtonUp callback
-    function up_fcn(hObj, evt)
-        opt.ButtonUpFcn(hObj, evt); % First, run callback from options
-        
-        % Reset action
-        clickType = evt.Source.SelectionType;
-        resBt = opt.ResetMouseButton;
-        if (resBt > 0 && ~isempty(orig.XLim))
-            if (resBt == 1 && strcmp(clickType, 'normal')) || ...
-                (resBt == 2 && strcmp(clickType, 'alt')) || ...
-                (resBt == 3 && strcmp(clickType, 'extend'))
+            guiArea = hittest(src);
+            parentAxes = ancestor(guiArea,'axes');
 
-                guiArea = hittest(hObj);
-                parentAxes = ancestor(guiArea,'axes');
-                parentAxes.XLim=orig.XLim;
-                parentAxes.YLim=orig.YLim;
+            % if the mouse is over the desired axis, trigger the pan fcn
+            if ~isempty(parentAxes)
+                startPan(parentAxes)
+            else
+                setptr(evt.Source,'forbidden')
             end
         end
-
-        stopPan
-    end %up_fcn
+    end
 
 
-    %% AXIS PANNING FUNCTIONS
+% Main mouseButtonUp callback
+function up_fcn(src, evt)
+    zpSet = src.UserData.zoompan;
+    zpSet.ButtonUpFcn(src, evt); % First, run callback from options
 
-    % Call this Fcn in your 'WindowButtonDownFcn'
-    % Take in desired Axis to pan
-    % Get seed points & assign the Panning Fcn to top level Fig
-    function startPan(hAx)
-        hFig = ancestor(hAx, 'Figure', 'toplevel');   % Parent Fig
+    % Reset action
+    clickType = evt.Source.SelectionType;
+    resBt = zpSet.ResetMouseButton;
+    if (resBt > 0 && ~isempty(zpSet.origXLim))
+        if (resBt == 1 && strcmp(clickType, 'normal')) || ...
+            (resBt == 2 && strcmp(clickType, 'alt')) || ...
+            (resBt == 3 && strcmp(clickType, 'extend'))
 
-        seedPt = get(hAx, 'CurrentPoint'); % Get init mouse position
-        seedPt = seedPt(1, :); % Keep only 1st point
-
-        % Temporarily stop 'auto resizing'
-        hAx.XLimMode = 'manual'; 
-        hAx.YLimMode = 'manual';
-
-        set(hFig,'WindowButtonMotionFcn',{@panningFcn,hAx,seedPt});
-        setptr(hFig, 'hand'); % Assign 'Panning' cursor
-    end %startPan
-
-
-    % Call this Fcn in your 'WindowButtonUpFcn'
-    function stopPan
-        set(gcbf,'WindowButtonMotionFcn',[]);
-        setptr(gcbf,'arrow');
-    end %stopPan
-
-
-    % Controls the real-time panning on the desired axis
-    function panningFcn(~,~,hAx,seedPt)
-        % Get current mouse position
-        currPt = get(hAx,'CurrentPoint');
-
-        % Current Limits [absolute vals]
-        XLim = hAx.XLim;
-        YLim = hAx.YLim;
-
-        % Original (seed) and Current mouse positions [relative (%) to axes]
-        x_seed = (seedPt(1)-XLim(1))/(XLim(2)-XLim(1));
-        y_seed = (seedPt(2)-YLim(1))/(YLim(2)-YLim(1));
-
-        x_curr = (currPt(1,1)-XLim(1))/(XLim(2)-XLim(1));
-        y_curr = (currPt(1,2)-YLim(1))/(YLim(2)-YLim(1));
-
-        % Change in mouse position [delta relative (%) to axes]
-        deltaX = x_curr-x_seed;
-        deltaY = y_curr-y_seed;
-
-        % Calculate new axis limits based on mouse position change
-        newXLims(1) = -deltaX*diff(XLim)+XLim(1);
-        newXLims(2) = newXLims(1)+diff(XLim);
-
-        newYLims(1) = -deltaY*diff(YLim)+YLim(1);
-        newYLims(2) = newYLims(1)+diff(YLim);
-
-        % MATLAB lack of anti-aliasing deforms the image if XLims & YLims are not integers
-        newXLims = round(newXLims);
-        newYLims = round(newYLims);
-
-        % Update Axes limits
-        if (newXLims(1) > 0.0 && newXLims(2) < opt.ImgWidth)
-            set(hAx,'Xlim',newXLims);
+            guiArea = hittest(src);
+            parentAxes = ancestor(guiArea,'axes');
+            parentAxes.XLim=zpSet.origXLim;
+            parentAxes.YLim=zpSet.origYLim;
         end
-        if (newYLims(1) > 0.0 && newYLims(2) < opt.ImgHeight)
-            set(hAx,'Ylim',newYLims);
-        end
-    end %panningFcn
+    end
 
-end %imgzoompan
+    stopPan
+
+
+
+
+% -------------------------------
+% Start of helpwer functions 
+
+
+%% AXIS PANNING FUNCTIONS
+
+% Call this Fcn in your 'WindowButtonDownFcn'
+% Take in desired Axis to pan
+% Get seed points & assign the Panning Fcn to top level Fig
+function startPan(hAx)
+    hFig = ancestor(hAx, 'Figure', 'toplevel');   % Parent Fig
+
+    seedPt = get(hAx, 'CurrentPoint'); % Get init mouse position
+    seedPt = seedPt(1, :); % Keep only 1st point
+
+    % Temporarily stop 'auto resizing'
+    hAx.XLimMode = 'manual'; 
+    hAx.YLimMode = 'manual';
+
+    set(hFig,'WindowButtonMotionFcn',{@panningFcn,hAx,seedPt});
+    setptr(hFig, 'hand'); % Assign 'Panning' cursor
+
+
+
+% Call this Fcn in your 'WindowButtonUpFcn'
+function stopPan
+    set(gcbf,'WindowButtonMotionFcn',[]);
+    setptr(gcbf,'arrow');
+
+
+
+% Controls the real-time panning on the desired axis
+function panningFcn(src,~,hAx,seedPt)
+    zpSet = src.UserData.zoompan;
+    % Get current mouse position
+    currPt = get(hAx,'CurrentPoint');
+
+    % Current Limits [absolute vals]
+    XLim = hAx.XLim;
+    YLim = hAx.YLim;
+
+    % Original (seed) and Current mouse positions [relative (%) to axes]
+    x_seed = (seedPt(1)-XLim(1))/(XLim(2)-XLim(1));
+    y_seed = (seedPt(2)-YLim(1))/(YLim(2)-YLim(1));
+
+    x_curr = (currPt(1,1)-XLim(1))/(XLim(2)-XLim(1));
+    y_curr = (currPt(1,2)-YLim(1))/(YLim(2)-YLim(1));
+
+    % Change in mouse position [delta relative (%) to axes]
+    deltaX = x_curr-x_seed;
+    deltaY = y_curr-y_seed;
+
+    % Calculate new axis limits based on mouse position change
+    newXLims(1) = -deltaX*diff(XLim)+XLim(1);
+    newXLims(2) = newXLims(1)+diff(XLim);
+
+    newYLims(1) = -deltaY*diff(YLim)+YLim(1);
+    newYLims(2) = newYLims(1)+diff(YLim);
+
+    % MATLAB lack of anti-aliasing deforms the image if XLims & YLims are not integers
+    newXLims = round(newXLims);
+    newYLims = round(newYLims);
+
+    % Update Axes limits
+    if (newXLims(1) > 0.0 && newXLims(2) < zpSet.ImgWidth)
+        set(hAx,'Xlim',newXLims);
+    end
+    if (newYLims(1) > 0.0 && newYLims(2) < zpSet.ImgHeight)
+        set(hAx,'Ylim',newYLims);
+    end
+
