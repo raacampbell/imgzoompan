@@ -1,7 +1,11 @@
-addpath('../');
+function example1
+% imgzoompan example1
+%
 % Simple use case: Load an image (provided) and show it,
-% then add zoompan functionality (in this case to the current axes: gca)
-% When using GUIDE, provide a handle to your own axes.
+% then add zoompan functionality.
+% When using GUIDE, provide a handle to your own figure window.
+
+help(mfilename)
 
 addpath('../');
 
